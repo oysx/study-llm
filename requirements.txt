@@ -1,0 +1,6 @@
+torchvision
+torch
+transformers
+intel_npu_acceleration_library
+pillow
+# sudo apt install libtbb-dev
