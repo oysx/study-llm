@@ -30,27 +30,27 @@ wrap_show(AutoProcessor, "from_pretrained")
 if using_intel_npu_acceleration_library:
   model = AutoModel.from_pretrained('openbmb/MiniCPM-Llama3-V-2_5', config, 
                                     trust_remote_code=True, 
-                                    torch_dtype=using_dtype,
+                                    torch_dtype=data_type,
                                     revision="320a581d2195ad4a52140bb427a07f7207aeac6e",
                                     proxies={"https": "http://127.0.0.1:1080"},
                                     export=False)
 else:
   model = AutoModel.from_pretrained('openbmb/MiniCPM-Llama3-V-2_5',
                                     trust_remote_code=True, 
-                                    torch_dtype=using_dtype,
+                                    torch_dtype=data_type,
                                     revision="320a581d2195ad4a52140bb427a07f7207aeac6e",
                                     proxies={"https": "http://127.0.0.1:1080"},)
 
 tokenizer = AutoTokenizer.from_pretrained('openbmb/MiniCPM-Llama3-V-2_5', trust_remote_code=True,
                                           revision="320a581d2195ad4a52140bb427a07f7207aeac6e",
                                           proxies={"https": "http://127.0.0.1:1080"},
-                                        #   dtype=torch.bfloat16
+                                          dtype=data_type
                                           )   # Vincent: Can't download tokenizer automatically, must download them manually
 
-# model = model.to(device='cpu', dtype=torch.bfloat16)
-model.to(device)
-model, tokenizer = accelerator.prepare(model, tokenizer)
+model.to(device=device, dtype=data_type)
 model.eval()
+if using_huggingface_accelerator:
+  model, tokenizer = accelerator.prepare(model, tokenizer)
 
 image = Image.open('/home/vv/python/llm/eval.jpg').convert('RGB')
 question = 'Print out sentences in the image.'
