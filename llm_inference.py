@@ -1,7 +1,7 @@
 # llm-inference.py
 # import tracemalloc
 # tracemalloc.start()
-from config import using_intel_npu_acceleration_library, using_huggingface_accelerator, using_statistic, using_streaming
+from config import using_intel_npu_acceleration_library, using_huggingface_accelerator, using_statistic, using_streaming, data_type
 
 import time
 import logging
@@ -30,14 +30,14 @@ wrap_show(AutoProcessor, "from_pretrained")
 if using_intel_npu_acceleration_library:
   model = AutoModel.from_pretrained('openbmb/MiniCPM-Llama3-V-2_5', config, 
                                     trust_remote_code=True, 
-                                    torch_dtype=torch.float16,
+                                    torch_dtype=using_dtype,
                                     revision="320a581d2195ad4a52140bb427a07f7207aeac6e",
                                     proxies={"https": "http://127.0.0.1:1080"},
                                     export=False)
 else:
   model = AutoModel.from_pretrained('openbmb/MiniCPM-Llama3-V-2_5',
                                     trust_remote_code=True, 
-                                    torch_dtype=torch.float16,
+                                    torch_dtype=using_dtype,
                                     revision="320a581d2195ad4a52140bb427a07f7207aeac6e",
                                     proxies={"https": "http://127.0.0.1:1080"},)
 

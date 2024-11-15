@@ -1,7 +1,7 @@
 import torch
-from intel_npu_acceleration_library.backend import check_npu_and_driver_version
-from intel_npu_acceleration_library.backend.runtime import run_matmul
-from intel_npu_acceleration_library.backend.factory import NNFactory
+# from intel_npu_acceleration_library.backend import check_npu_and_driver_version
+# from intel_npu_acceleration_library.backend.runtime import run_matmul
+# from intel_npu_acceleration_library.backend.factory import NNFactory
 import time
 
 
@@ -73,32 +73,48 @@ def check():
         else:
             print(f"Equal!")
 
+import numpy as np
+
+def check_transpose_precise():
+    prev = torch.rand(1000, 1000, dtype=torch.float16)
+    torch_after = prev.transpose(0, 1).numpy()
+    prev = prev.numpy()
+    manual_after = torch.zeros(1000, 1000).numpy()
+    for i in range(len(prev)):
+        for j in range(len(prev[0])):
+            manual_after[j][i] = prev[i][j]
+
+    diff = np.subtract(manual_after, torch_after)
+    print(np.nonzero(diff))
+
+check_transpose_precise()
+
 # with torch.no_grad():
 #     for i in range(1):
 #         check()
 #     print(f"Total diff: {total_diff}, nz={diff_count}")
-import numpy
-with torch.no_grad():
-    a = torch.rand(100, 100, dtype=torch.float16)
-    b = torch.rand(100, 100, dtype=torch.float16)
-    cc = torch.matmul(a, b).numpy()
-    c1 = run_matmul(a, b.transpose(0,1)).numpy()
-    c2 = [[] for i in range(len(a))]
-    for i in range(len(a)):
-        for j in range(len(a)):
-            sum = 0.0
-            for k in range(len(a)):
-                sum += a[i][k] * b[k][j]
-            c2[i].append(sum.numpy())
+# import numpy
+# with torch.no_grad():
+#     a = torch.rand(100, 100, dtype=torch.float16)
+#     b = torch.rand(100, 100, dtype=torch.float16)
+#     cc = torch.matmul(a, b).numpy()
+#     c1 = run_matmul(a, b.transpose(0,1)).numpy()
+#     c2 = [[] for i in range(len(a))]
+#     for i in range(len(a)):
+#         for j in range(len(a)):
+#             sum = 0.0
+#             for k in range(len(a)):
+#                 sum += a[i][k] * b[k][j]
+#             c2[i].append(sum.numpy())
 
-    diff_intel_manual = abs(c1 - c2)
-    diff_torch_manual = abs(cc - c2)
-    diff_torch_intel = abs(cc - c1)
-    print(f"diff_torch_intel: {len(diff_torch_intel.nonzero()[0])}, max: {diff_torch_intel.max()}, min: {diff_torch_intel.min()}")
-    print(f"diff_torch_manual: {len(diff_torch_manual.nonzero()[0])}, max: {diff_torch_manual.max()}, min: {diff_torch_manual.min()}")
-    print(f"diff_intel_manual: {len(diff_intel_manual.nonzero()[0])}, max: {diff_intel_manual.max()}, min: {diff_intel_manual.min()}")
-    # print(f"c1: {c1}")
-    # print(f"c2: {c2}")
+#     diff_intel_manual = abs(c1 - c2)
+#     diff_torch_manual = abs(cc - c2)
+#     diff_torch_intel = abs(cc - c1)
+#     print(f"diff_torch_intel: {len(diff_torch_intel.nonzero()[0])}, max: {diff_torch_intel.max()}, min: {diff_torch_intel.min()}")
+#     print(f"diff_torch_manual: {len(diff_torch_manual.nonzero()[0])}, max: {diff_torch_manual.max()}, min: {diff_torch_manual.min()}")
+#     print(f"diff_intel_manual: {len(diff_intel_manual.nonzero()[0])}, max: {diff_intel_manual.max()}, min: {diff_intel_manual.min()}")
+#     # print(f"c1: {c1}")
+#     # print(f"c2: {c2}")
 
 #
 # Copyright © 2024 Intel Corporation

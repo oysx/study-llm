@@ -1,4 +1,4 @@
-from config import using_intel_npu_acceleration_library, using_statistic
+from config import using_intel_npu_acceleration_library, using_statistic, patching_linear_and_matmul
 from functools import partial
 from collections import OrderedDict
 import gc
@@ -168,6 +168,7 @@ statistic = Statistic()
 history = LRE()
 
 if using_intel_npu_acceleration_library:
-    functional.linear = patching_linear(functional.linear)   # linear(matmul)
-    torch.matmul = patching_matmul(torch.matmul)
     NNFactory.compile = patching_compile(NNFactory.compile)
+    if patching_linear_and_matmul:
+        functional.linear = patching_linear(functional.linear)   # linear(matmul)
+        torch.matmul = patching_matmul(torch.matmul)
