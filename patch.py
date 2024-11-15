@@ -1,13 +1,19 @@
-
-from intel_npu_acceleration_library.device import implements_factory
-from intel_npu_acceleration_library.nn.functional import layer_norm, linear
-from intel_npu_acceleration_library.backend.runtime import run_factory, run_matmul, _model_cache
-from intel_npu_acceleration_library.backend.matmul import MatMul
-from intel_npu_acceleration_library.backend.factory import NNFactory
+from config import using_intel_npu_acceleration_library, using_statistic
 from functools import partial
 from collections import OrderedDict
 import gc
+import time
 import numpy as np
+import inspect
+from torch.nn import functional
+import torch
+
+if using_intel_npu_acceleration_library:
+    from intel_npu_acceleration_library.device import implements_factory
+    from intel_npu_acceleration_library.nn.functional import layer_norm, linear
+    from intel_npu_acceleration_library.backend.runtime import run_factory, run_matmul, _model_cache
+    from intel_npu_acceleration_library.backend.matmul import MatMul
+    from intel_npu_acceleration_library.backend.factory import NNFactory
 
 class Statistic:
     def __init__(self) -> None:
@@ -34,28 +40,25 @@ class Statistic:
     def show(self):
         print(f"Total: tensor={self.tensor_diff_count}, element={self.element_diff_count}, min={self.min_diff}, max={self.max_diff}")
 
-statistic = Statistic()
 
 # implements_factory(torch.device)()
-from torch.nn import functional
 def patching_linear(func):
     def my_linear(x, weight, bias=None):
         # return run_factory(x, weight, partial(MatMul), None)
         base = run_matmul(x, weight)
-        # statistic.torch_diff(base, func(x, weight))
+        if using_statistic:
+            statistic.torch_diff(base, func(x, weight))
         return base if bias is None else base + bias
     return my_linear
-functional.linear = patching_linear(functional.linear)   # linear(matmul)
 
-import torch
 def patching_matmul(func):
     def _wrapper(input, other, *args, out=None):
         ret = run_matmul(input, other.transpose(-2, -1))
-        # statistic.torch_diff(ret, func(input, other))
+        if using_statistic:
+           statistic.torch_diff(ret, func(input, other))
         return ret
 
     return _wrapper
-torch.matmul = patching_matmul(torch.matmul)
 
 class LRE:
     def __init__(self) -> None:
@@ -82,7 +85,6 @@ class LRE:
         return self.total + accumulate(shape) >= 1000000000
 
 
-history = LRE()
 def get_key(self):
     op_class_name, batch, inC, outC, dtype = self.__class__.__name__, self.batch, self.inC, self.outC, "float16"
     return f"{str(op_class_name)}_{batch}_{inC}_x_{outC}_{inC}_{dtype}"
@@ -107,7 +109,6 @@ def prepare(self):
             popup()
         else:
             break
-
 
 def patching_compile(func):
     def _wrapper(self, *args, **kwargs):        
@@ -140,10 +141,6 @@ def patching_run(func):
         return ret
     return _wrapper
 
-NNFactory.compile = patching_compile(NNFactory.compile)
-
-
-import inspect
 def patching(container, member, replacement):
     origin = getattr(container, member)
     if inspect.ismethod(origin):
@@ -152,7 +149,6 @@ def patching(container, member, replacement):
         new = partial(replacement, origin)
     setattr(container, member, new)
 
-import time
 def wrap_show(container, member):
     def show(caller, *args, **kwargs):
         name = getattr(container, '__name__', container.__class__.__name__)
@@ -165,4 +161,13 @@ def wrap_show(container, member):
         return ret
 
     patching(container, member, show)
-    
+
+
+
+statistic = Statistic()
+history = LRE()
+
+if using_intel_npu_acceleration_library:
+    functional.linear = patching_linear(functional.linear)   # linear(matmul)
+    torch.matmul = patching_matmul(torch.matmul)
+    NNFactory.compile = patching_compile(NNFactory.compile)
